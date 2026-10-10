@@ -39,6 +39,7 @@ npm install
 npm run dev          # http://localhost:5173
 npm run dev:phone    # HTTPS im lokalen Netz, z. B. für Mikrofontests auf dem Handy
 npm run verify       # Typprüfung + Tests + Build
+npm run ofl:import   # Gerätedatenbank neu erzeugen (feste OFL-Version, siehe scripts/ofl-import/import.ts)
 ```
 
 Aufbau:
@@ -56,4 +57,4 @@ Fehler in Berechnungen bitte als [Issue](https://github.com/xMenko/AV-tools/issu
 ## Lizenzen
 
 - Eigener Code: MIT, siehe [LICENSE](LICENSE)
-- Lampendatenbank (geplant): [Open Fixture Library](https://github.com/OpenLightingProject/open-fixture-library), MIT
+- Gerätedatenbank (`public/fixtures.json`): erzeugt aus der [Open Fixture Library](https://github.com/OpenLightingProject/open-fixture-library), MIT, Lizenztext in `public/licenses/open-fixture-library.txt`

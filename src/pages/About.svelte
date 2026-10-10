@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { FIXTURE_DB_INFO as db } from '../lib/core/dmx/fixtureDbInfo.generated';
   import ResultRow from '../lib/ui/ResultRow.svelte';
   import { clearAllStored } from '../lib/ui/persisted.svelte';
 
   let cleared = $state(false);
+  const dbDate = db.date.split('-').reverse().join('.');
   const standalone =
     typeof window !== 'undefined' &&
     (window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
@@ -48,6 +50,17 @@
 </section>
 
 <section class="card">
+  <h2>Gerätedatenbank</h2>
+  <ResultRow label="Stand" value="{dbDate} (OFL {db.commit.slice(0, 7)})" />
+  <ResultRow label="Umfang" value="{db.fixtures} Geräte, {db.manufacturers} Hersteller" />
+  <p class="small">
+    Die Datenbank für den DMX-Rechner stammt aus der Open Fixture Library und ist Teil der App. Sie wird nur mit einer
+    neuen App-Version aktualisiert. Updates werden geladen, wenn die App mit Internetverbindung geöffnet wird („Neue
+    Version verfügbar → Neu laden“).
+  </p>
+</section>
+
+<section class="card">
   <h2>Hinweis</h2>
   <p class="small">
     Alle Berechnungen erfolgen nach bestem Wissen, jedoch ohne Gewähr. Ergebnisse vor dem Einsatz immer plausibilisieren.
@@ -68,5 +81,10 @@
   <p class="small">
     AV Tools ist Open Source unter der MIT-Lizenz. Quellcode:
     <a href="https://github.com/xMenko/AV-tools" target="_blank" rel="noopener noreferrer">github.com/xMenko/AV-tools</a>
+  </p>
+  <p class="small">
+    Gerätedatenbank: <a href={db.url} target="_blank" rel="noopener noreferrer">Open Fixture Library</a>, © Florian &amp;
+    Felix Edelmann und Mitwirkende, MIT-Lizenz –
+    <a href="./licenses/open-fixture-library.txt">Lizenztext</a>
   </p>
 </section>
