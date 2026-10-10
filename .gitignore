@@ -1,0 +1,32 @@
+# --- Privat / nicht veröffentlichen -------------------------------------
+# Claude-Code-Anweisungen und Agenten bleiben lokal.
+# (Zeilen entfernen, falls du sie doch veröffentlichen willst – sie enthalten keine Geheimnisse.)
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+_claude-agents/
+
+# --- Secrets: niemals committen ----------------------------------------
+.env
+.env.*
+*.pem
+*.key
+
+# --- Generiert ------------------------------------------------------------
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# Altes Swift-Projekt (falls noch lokal vorhanden)
+App/
+Packages/
+Config/
+project.yml
+*.xcodeproj
+
+# --- System ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
