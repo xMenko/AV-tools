@@ -222,7 +222,7 @@ Gestrichen: MAC-Herstellerlookup, Akkulaufzeit Funkstrecken.
 - Hosting GitHub Pages: GitHub protokolliert IP-Adressen beim Laden und bei Update-Prüfungen. Das steht in der Datenschutzerklärung.
 - `localStorage` nur für die letzten Eingaben, als technisch erforderlich nach § 25 Abs. 2 Nr. 2 TDDDG; jederzeit löschbar.
 - Mikrofon nur nach Freigabe und während der Messung, Auswertung nur im Arbeitsspeicher.
-- Datenschutzerklärung: `public/datenschutz.html`, offline verfügbar und in „Über“ verlinkt. Verantwortlicher mit eigener Anschrift.
+- Datenschutzerklärung: `public/datenschutz.html`, offline verfügbar und in „Über“ verlinkt. Verantwortlicher mit Name und E-Mail (av_tools@icloud.com), ohne Postanschrift.
 - Lizenzen: MIT für den eigenen Code; Open Fixture Library (MIT) mit Hinweis in „Über“, sobald enthalten.
 
 ## 6. Haftung (Rigging/Strom)
@@ -248,8 +248,9 @@ Gestrichen: MAC-Herstellerlookup, Akkulaufzeit Funkstrecken.
 | 2026-10-10 | Rigging-Tools rein, mit Bestätigungsdialog und Hinweis |
 | 2026-10-10 | ~~Native iOS-App (Swift)~~ → **Web-App (PWA)**, weil App Store/TestFlight 99 €/Jahr kosten |
 | 2026-10-10 | Rechenlogik als reines TypeScript in `src/lib/core`, getrennt von der UI |
-| 2026-10-10 | Datenschutzerklärung über GitHub Pages; Verantwortlicher mit eigener Anschrift |
+| 2026-10-10 | Datenschutzerklärung über GitHub Pages; ~~Verantwortlicher mit eigener Anschrift~~ → siehe unten |
 | 2026-10-10 | Verteilung per Link (GitHub Pages) an Kollegen und Freunde, keine aktive Werbung |
 | 2026-10-10 | Signalgenerator, RTA und Polaritätscheck gehören zu V1 |
 | 2026-10-10 | Zahnlücken-Rechner = Sub-Abstand aus Gehäusemaß und Übergangsfrequenz, Arc-Delay integriert |
 | 2026-10-10 | Sub-Abstand immer Mitte–Mitte; λ/2 fest, λ/4 anpassbar; Arc-Delay: Mitte T0, nach außen steigend |
+| 2026-10-10 | Datenschutzerklärung ohne Postanschrift, nur Name und E-Mail (kein kostenpflichtiger Anschriftenservice); bei kommerzieller Nutzung oder Impressumspflicht neu bewerten |

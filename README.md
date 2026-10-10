@@ -6,6 +6,8 @@ Rechner und Messwerkzeuge für die Veranstaltungstechnik als Web-App. Sie läuft
 - **Keine Datenerhebung:** keine Cookies, kein Tracking, keine Werbung, keine externen Ressourcen. Das Mikrofon wird nur während einer Messung genutzt und nichts davon gespeichert.
 - **Open Source** unter der MIT-Lizenz.
 
+**App öffnen:** https://xmenko.github.io/AV-tools/
+
 > **Hinweis:** Alle Ergebnisse sind Richtwerte ohne Gewähr. Messungen mit Smartphone-Mikrofonen sind unkalibriert. Rigging- und Stromberechnungen ersetzen keine fachkundige Planung.
 
 ## Tools
@@ -24,7 +26,7 @@ Die vollständige Roadmap steht in [`spec/SPEC.md`](spec/SPEC.md).
 
 ## Installieren (für Nutzer)
 
-Link im Browser öffnen, dann:
+https://xmenko.github.io/AV-tools/ im Browser öffnen, dann:
 - **iPhone/iPad (Safari):** Teilen → „Zum Home-Bildschirm“
 - **Android (Chrome):** Menü ⋮ → „App installieren“
 
@@ -49,7 +51,7 @@ Veröffentlicht wird per GitHub Pages: Jeder Push auf `main` baut, testet und de
 
 ## Beitragen
 
-Fehler in Berechnungen bitte als Issue melden, mit Eingabewerten, erwartetem und tatsächlichem Ergebnis sowie der Quelle des erwarteten Werts. Korrekturen an Berechnungen haben Vorrang vor neuen Features.
+Fehler in Berechnungen bitte als [Issue](https://github.com/xMenko/AV-tools/issues) melden (oder per E-Mail an av_tools@icloud.com), mit Eingabewerten, erwartetem und tatsächlichem Ergebnis sowie der Quelle des erwarteten Werts. Korrekturen an Berechnungen haben Vorrang vor neuen Features.
 
 ## Lizenzen
 

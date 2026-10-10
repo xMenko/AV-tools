@@ -56,6 +56,17 @@
 </section>
 
 <section class="card">
+  <h2>Kontakt</h2>
+  <p class="small">
+    Fehler gefunden oder eine Idee? E-Mail an <a href="mailto:av_tools@icloud.com">av_tools@icloud.com</a> oder als Issue
+    auf GitHub.
+  </p>
+</section>
+
+<section class="card">
   <h2>Lizenzen</h2>
-  <p class="small">AV Tools ist Open Source unter der MIT-Lizenz.</p>
+  <p class="small">
+    AV Tools ist Open Source unter der MIT-Lizenz. Quellcode:
+    <a href="https://github.com/xMenko/AV-tools" target="_blank" rel="noopener noreferrer">github.com/xMenko/AV-tools</a>
+  </p>
 </section>
