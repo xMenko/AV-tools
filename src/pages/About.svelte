@@ -4,6 +4,7 @@
   import { clearAllStored } from '../lib/ui/persisted.svelte';
 
   let cleared = $state(false);
+  let confirmClear = $state(false);
   const dbDate = db.date.split('-').reverse().join('.');
   const standalone =
     typeof window !== 'undefined' &&
@@ -32,20 +33,27 @@
   <p class="small">
     AV Tools erhebt, speichert und überträgt keine personenbezogenen Daten. Die App stellt nach dem Laden keine
     Verbindung zu anderen Servern her und enthält keine Analyse-, Tracking- oder Werbedienste. Mikrofonsignale werden nur
-    im Arbeitsspeicher deines Geräts ausgewertet und weder gespeichert noch übertragen. Deine letzten Eingaben werden
-    lokal im Browser gespeichert.
+    im Arbeitsspeicher deines Geräts ausgewertet und weder gespeichert noch übertragen. Deine letzten Eingaben sowie
+    eigene Geräte und Favoriten im DMX-Rechner werden nur lokal in diesem Browser gespeichert.
   </p>
   <p class="small"><a href="./datenschutz.html">Vollständige Datenschutzerklärung</a></p>
   {#if cleared}
     <p class="small muted">Gespeicherte Eingaben gelöscht.</p>
-  {:else}
+  {:else if confirmClear}
+    <p class="warning">
+      Löscht alle gespeicherten Eingaben – auch eigene Geräte und Favoriten im DMX-Rechner. Eigene Geräte vorher dort
+      exportieren, wenn du sie behalten willst.
+    </p>
     <button
-      class="link-btn danger"
+      class="btn danger block"
       onclick={() => {
         clearAllStored();
         cleared = true;
-      }}>Gespeicherte Eingaben löschen</button
+      }}>Alles löschen</button
     >
+    <button class="link-btn" onclick={() => (confirmClear = false)}>Abbrechen</button>
+  {:else}
+    <button class="link-btn danger" onclick={() => (confirmClear = true)}>Gespeicherte Eingaben löschen</button>
   {/if}
 </section>
 

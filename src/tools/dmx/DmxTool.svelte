@@ -2,7 +2,14 @@
   import { onMount } from 'svelte';
   import { artNetAddress, type ArtNetBase } from '../../lib/core/dmx/artnet';
   import { DEFAULT_DIP_PROFILE, dipOnSwitches } from '../../lib/core/dmx/dip';
-  import { fixtureAt, searchFixtures, type Fixture } from '../../lib/core/dmx/fixtureDb';
+  import {
+    exportCustomFixtures,
+    isCustomId,
+    mergeCustomFixtures,
+    parseFixtureExport,
+    type ImportError,
+  } from '../../lib/core/dmx/customFixtures';
+  import { fixtureAt, searchEntry, searchFixtures, type Fixture } from '../../lib/core/dmx/fixtureDb';
   import {
     alignUp,
     calculatePatch,
@@ -21,6 +28,7 @@
   import ToggleRow from '../../lib/ui/ToggleRow.svelte';
   import { persisted } from '../../lib/ui/persisted.svelte';
   import { uid } from '../../lib/ui/uid';
+  import FixtureEditor from './FixtureEditor.svelte';
 
   /** Fixture chosen from the database; channel names are kept so the patch works before the DB loads. */
   interface FixtureRef {
@@ -72,6 +80,72 @@
   });
   const s = $derived(store.value);
 
+  // --- Own fixtures and favourites (localStorage, this browser only) -----------------------------
+  type EditableFixture = { id: string; manufacturer: string; name: string; modes: { name: string; channels: string[] }[] };
+  const customStore = persisted('dmx.fixtures', [] as EditableFixture[]);
+  const favStore = persisted('dmx.favorites', [] as string[]);
+  const custom = $derived(customStore.value);
+  const favorites = $derived(favStore.value);
+  const customIndex = $derived(custom.map((f) => searchEntry(`${f.manufacturer} ${f.name}`)));
+
+  const isFavorite = (id: string) => favorites.includes(id);
+  function toggleFavorite(id: string) {
+    const i = favorites.indexOf(id);
+    if (i >= 0) favorites.splice(i, 1);
+    else favorites.push(id);
+  }
+
+  /** Editor: new fixture, edit an own fixture, or copy a database fixture; optionally for a group. */
+  let editing = $state<{ fixture?: Fixture; keepId: boolean; forGroup?: string; suggested?: string }>();
+  function saveCustom(f: Fixture) {
+    const copy: EditableFixture = { ...f, modes: f.modes.map((m) => ({ name: m.name, channels: [...m.channels] })) };
+    const i = custom.findIndex((c) => c.id === f.id);
+    if (i >= 0) custom[i] = copy;
+    else custom.push(copy);
+    const g = s.groups.find((x) => x.id === editing?.forGroup);
+    if (g) choose(g, f);
+    editing = undefined;
+  }
+  let confirmDelete = $state<string>();
+  function deleteCustom(id: string) {
+    const i = custom.findIndex((c) => c.id === id);
+    if (i >= 0) custom.splice(i, 1);
+    const fi = favorites.indexOf(id);
+    if (fi >= 0) favorites.splice(fi, 1);
+    confirmDelete = undefined;
+  }
+
+  function exportFile() {
+    const data = exportCustomFixtures(custom, new Date());
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `av-tools-geraete-${data.exported}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  let importMessage = $state('');
+  const IMPORT_ERROR: Record<ImportError, string> = {
+    notJson: 'Die Datei ist keine JSON-Datei.',
+    wrongFormat: 'Die Datei ist kein Geräte-Export von AV Tools.',
+    newerVersion: 'Die Datei stammt aus einer neueren App-Version – bitte App aktualisieren.',
+    tooMany: 'Zu viele Geräte in der Datei (höchstens 2000).',
+    invalidFixture: 'Die Datei enthält ein ungültiges Gerät – nichts importiert.',
+  };
+  async function importFile(e: Event & { currentTarget: HTMLInputElement }) {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = '';
+    if (!file) return;
+    const r = parseFixtureExport(await file.text());
+    if (!r.ok) {
+      importMessage = IMPORT_ERROR[r.error];
+      return;
+    }
+    const m = mergeCustomFixtures(custom, r.value);
+    customStore.value = m.fixtures.map((f) => ({ ...f, modes: f.modes.map((x) => ({ name: x.name, channels: [...x.channels] })) }));
+    importMessage = `${m.added} Gerät(e) hinzugefügt, ${m.updated} aktualisiert.`;
+  }
+
   // --- Database -------------------------------------------------------------------------------
   let loaded = $state<LoadedDatabase>();
   let dbFailed = $state(false);
@@ -82,6 +156,7 @@
     });
   });
   const fixtureById = (id: string): Fixture | undefined => {
+    if (isCustomId(id)) return custom.find((f) => f.id === id);
     const i = loaded?.byId.get(id);
     return loaded && i !== undefined ? fixtureAt(loaded.db, i) : undefined;
   };
@@ -92,7 +167,15 @@
   const MAX_HITS = 30;
   // one more than shown, to know whether there are more
   const found = $derived(loaded && query.trim() ? searchFixtures(loaded.index, query, MAX_HITS + 1) : []);
-  const hits = $derived(found.slice(0, MAX_HITS));
+  /** own fixtures first, then database */
+  const hits = $derived<Fixture[]>(
+    query.trim()
+      ? [
+          ...searchFixtures(customIndex, query, MAX_HITS).map((i) => custom[i]!),
+          ...found.slice(0, MAX_HITS).map((i) => fixtureAt(loaded!.db, i)!),
+        ]
+      : favorites.flatMap((id) => fixtureById(id) ?? []),
+  );
 
   function choose(g: GroupDraft, f: Fixture, modeName?: string) {
     const mode = f.modes.find((m) => m.name === modeName) ?? f.modes[0]!;
@@ -103,7 +186,7 @@
     query = '';
   }
 
-  /** Saved channel list differs from the database (mode renamed or changed by an OFL update). */
+  /** Saved channel list differs from the source (OFL update, mode renamed, own fixture edited). */
   const isStale = (ref: FixtureRef, f: Fixture) => {
     const mode = f.modes.find((m) => m.name === ref.mode);
     return !mode || mode.channels.length !== ref.channelNames.length || mode.channels.some((c, i) => c !== ref.channelNames[i]);
@@ -233,7 +316,15 @@
       </button>
     </div>
 
-    {#if pickerFor === g.id}
+    {#if editing?.forGroup === g.id}
+      <FixtureEditor
+        initial={editing.fixture}
+        keepId={editing.keepId}
+        suggestedName={editing.suggested}
+        onsave={saveCustom}
+        oncancel={() => (editing = undefined)}
+      />
+    {:else if pickerFor === g.id}
       <div class="picker">
         <!-- svelte-ignore a11y_autofocus -->
         <input class="search" type="search" bind:value={query} placeholder="Hersteller oder Modell" aria-label="Gerät suchen" autofocus />
@@ -242,15 +333,20 @@
         {:else if !loaded}
           <p class="small muted">Datenbank wird geladen …</p>
         {:else if query.trim() && hits.length === 0}
-          <p class="small muted">Kein Gerät gefunden.</p>
+          <p class="small muted">Kein Gerät gefunden – als eigenes Gerät anlegen?</p>
+        {:else if !query.trim()}
+          <p class="small muted">{hits.length ? 'Favoriten' : 'Hersteller oder Modell eingeben. Mit ☆ markierte Geräte erscheinen hier als Favoriten.'}</p>
         {/if}
         <ul class="hits">
-          {#each hits as h (h)}
-            {@const f = fixtureAt(loaded!.db, h)!}
+          {#each hits as f (f.id)}
+            {@const fav = isFavorite(f.id)}
             <li>
               <button class="hit" onclick={() => choose(g, f)}>
-                <span class="muted small">{f.manufacturer}</span>
+                <span class="muted small">{f.manufacturer}{isCustomId(f.id) ? ' · eigenes Gerät' : ''}</span>
                 <span>{f.name}</span>
+              </button>
+              <button class="star" aria-pressed={fav} aria-label="{f.name} {fav ? 'aus Favoriten entfernen' : 'als Favorit merken'}" onclick={() => toggleFavorite(f.id)}>
+                {fav ? '★' : '☆'}
               </button>
             </li>
           {/each}
@@ -258,6 +354,9 @@
         {#if found.length > MAX_HITS}
           <p class="small muted">Weitere Treffer – Suche genauer eingeben (z. B. Hersteller und Modell).</p>
         {/if}
+        <button class="link-btn" onclick={() => (editing = { keepId: false, forGroup: g.id, suggested: query.trim() })}>
+          + Eigenes Gerät anlegen
+        </button>
         <div class="picker-actions">
           <button
             class="link-btn"
@@ -265,7 +364,7 @@
               if (g.fixture) g.manualChannels = g.fixture.channelNames.length;
               g.fixture = undefined;
               pickerFor = undefined;
-            }}>Ohne Datenbank (Kanalzahl)</button
+            }}>Nur Kanalzahl</button
           >
           <button class="link-btn" onclick={() => (pickerFor = undefined)}>Abbrechen</button>
         </div>
@@ -274,7 +373,7 @@
       <div class="row">
         <span class="label">Gerät</span>
         <button class="link-btn device" onclick={() => { pickerFor = g.id; query = ''; }}>
-          {g.fixture ? g.fixture.label : 'Aus Datenbank wählen …'}
+          {g.fixture ? g.fixture.label : 'Gerät wählen …'}
         </button>
       </div>
     {/if}
@@ -293,12 +392,15 @@
         <ResultRow label="Modus" value={g.fixture.mode} />
       {/if}
       <ResultRow label="Kanäle pro Gerät" value={String(g.fixture.channelNames.length)} />
-      {#if loaded && !dbFixture}
-        <p class="warning">Gerät nicht mehr in der Datenbank – gespeicherte Kanalliste wird verwendet.</p>
+      {#if (loaded || isCustomId(g.fixture.id)) && !dbFixture}
+        <p class="warning">Gerät nicht mehr vorhanden – die gespeicherte Kanalliste wird verwendet.</p>
       {:else if dbFixture && isStale(g.fixture, dbFixture)}
         <div class="warning stale">
-          <span>Die Datenbank hat für diesen Modus eine andere Kanalliste als gespeichert (z. B. nach einem App-Update). Gerechnet wird mit der gespeicherten.</span>
-          <button class="btn" onclick={() => choose(g, dbFixture, g.fixture!.mode)}>Aus Datenbank übernehmen</button>
+          <span>
+            {isCustomId(dbFixture.id) ? 'Das eigene Gerät wurde geändert' : 'Die Datenbank hat sich geändert (App-Update)'} – für
+            diesen Modus gilt jetzt eine andere Kanalliste. Gerechnet wird noch mit der bisherigen.
+          </span>
+          <button class="btn" onclick={() => choose(g, dbFixture, g.fixture!.mode)}>Neue Kanalliste übernehmen</button>
         </div>
       {/if}
     {:else}
@@ -366,6 +468,16 @@
           {/each}
         </ol>
       </details>
+      {#if dbFixture && editing?.forGroup !== g.id}
+        <button
+          class="link-btn"
+          onclick={() => (editing = isCustomId(dbFixture.id)
+            ? { fixture: dbFixture, keepId: true, forGroup: g.id }
+            : { fixture: dbFixture, keepId: false, forGroup: g.id })}
+        >
+          {isCustomId(dbFixture.id) ? 'Eigenes Gerät bearbeiten' : 'Als eigenes Gerät kopieren (z. B. Modus ergänzen)'}
+        </button>
+      {/if}
     {/if}
   </section>
 {/each}
@@ -406,6 +518,52 @@
   <button class="link-btn" onclick={() => s.reserved.push({ id: uid(), universe: 1, from: 1, to: 20 })}>
     + Reservierten Bereich hinzufügen
   </button>
+</section>
+
+<section class="card">
+  <h2>Eigene Geräte</h2>
+  <p class="small muted">
+    Geräte, die nicht in der Datenbank sind. Eigene Geräte und Favoriten werden nur lokal in diesem Browser gespeichert
+    und nicht übertragen. Beim Löschen der Browserdaten oder über „Gespeicherte Eingaben löschen“ gehen sie verloren –
+    zur Sicherung oder für ein anderes Gerät exportieren.
+  </p>
+  {#if editing && !editing.forGroup}
+    <FixtureEditor
+      initial={editing.fixture}
+      keepId={editing.keepId}
+      onsave={saveCustom}
+      oncancel={() => (editing = undefined)}
+    />
+  {:else}
+    <ul class="own">
+      {#each custom as f (f.id)}
+        <li>
+          <span class="own-name">
+            {f.manufacturer} {f.name}
+            <span class="small muted">{f.modes.map((m) => `${m.name} (${m.channels.length})`).join(', ')}</span>
+          </span>
+          {#if confirmDelete === f.id}
+            <button class="link-btn danger" onclick={() => deleteCustom(f.id)}>Wirklich löschen</button>
+            <button class="link-btn" onclick={() => (confirmDelete = undefined)}>Nein</button>
+          {:else}
+            <button class="link-btn" onclick={() => (editing = { fixture: f, keepId: true })}>Bearbeiten</button>
+            <button class="icon-del" aria-label="{f.name} löschen" onclick={() => (confirmDelete = f.id)}>
+              <Icon name="trash" size={20} />
+            </button>
+          {/if}
+        </li>
+      {/each}
+    </ul>
+    <button class="link-btn" onclick={() => (editing = { keepId: false })}>+ Neues Gerät</button>
+    <div class="io">
+      <button class="btn" disabled={custom.length === 0} onclick={exportFile}>Exportieren</button>
+      <label class="btn">
+        Importieren
+        <input type="file" accept=".json,application/json" class="visually-hidden" onchange={importFile} />
+      </label>
+    </div>
+    {#if importMessage}<p class="small" role="status">{importMessage}</p>{/if}
+  {/if}
 </section>
 
 {#if !patch.ok}
@@ -533,6 +691,56 @@
     background: none;
     text-align: left;
     cursor: pointer;
+  }
+  .hits li {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--line);
+  }
+  .hits .hit {
+    flex: 1;
+    border-bottom: 0;
+  }
+  .star {
+    min-width: var(--tap);
+    border: 0;
+    background: none;
+    color: var(--warn);
+    font-size: 22px;
+    cursor: pointer;
+  }
+  .own {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .own li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .own-name {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 0;
+    min-width: 0;
+  }
+  .io {
+    display: flex;
+    gap: 8px;
+    padding: 4px 0 12px;
+  }
+  .io .btn {
+    flex: 1;
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
   .picker-actions {
     display: flex;
