@@ -79,7 +79,6 @@ try {
     `"format":${db.format},`,
     `"source":${JSON.stringify(db.source)},`,
     `"manufacturers":${JSON.stringify(db.manufacturers)},`,
-    `"channels":${JSON.stringify(db.channels)},`,
     '"fixtures":[',
     db.fixtures.map((f) => JSON.stringify(f)).join(',\n'),
     ']}',
@@ -101,8 +100,8 @@ try {
   const modes = db.fixtures.reduce((n, f) => n + f[3].length, 0);
   const size = Buffer.byteLength(lines.join('\n'));
   console.log(
-    `${db.fixtures.length} fixtures, ${modes} modes, ${db.manufacturers.length} manufacturers, ` +
-      `${db.channels.length} channel names → ${OUT} (${(size / 1024).toFixed(0)} KiB), OFL ${date} ${head.slice(0, 12)}`,
+    `${db.fixtures.length} fixtures, ${modes} modes, ${db.manufacturers.length} manufacturers ` +
+      `→ ${OUT} (${(size / 1024).toFixed(0)} KiB), OFL ${date} ${head.slice(0, 12)}`,
   );
 } finally {
   if (tempDir) rmSync(tempDir, { recursive: true, force: true });

@@ -75,7 +75,7 @@
 </script>
 
 <section class="card">
-  <NumberField label="DMX-Adresse" bind:value={s.address} digits={0} min={0} max={512} />
+  <NumberField label="DMX-Adresse" bind:value={s.address} digits={0} integer min={0} max={512} />
   {#if warning}<p class="warning">{warning}</p>{/if}
 
   <div class="dip" role="group" aria-label="DIP-Schalter, antippen zum Umschalten">

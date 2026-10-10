@@ -3,7 +3,7 @@
  * docs/fixture-format.md) into the bundled database format. Used by scripts/ofl-import at build time only.
  *
  * Mirrors OFL's lib/model/Matrix.js and Mode.js for channel order (matrix insert blocks, pixel key sorting)
- * and its naming of fine channels ("<name> fine", "<name> fine^2").
+ * and FineChannel naming ("<coarse name> fine", "… fine^2", whatever the alias key is).
  * No imports except types, so Node can run it directly (type stripping).
  */
 import type { DbFixture, DbMode, FixtureDatabase, FixtureDbSource } from './fixtureDb';
@@ -42,6 +42,16 @@ export interface OflRedirect {
 
 const PIXEL_KEY = '$pixelKey';
 const resolveTemplate = (s: string, pixelKey: string) => s.split(PIXEL_KEY).join(pixelKey);
+
+/** Replaces $pixelKey in every string and object key of a template channel (OFL resolveTemplateObject). */
+function resolveDeep(value: unknown, pixelKey: string): unknown {
+  if (typeof value === 'string') return resolveTemplate(value, pixelKey);
+  if (Array.isArray(value)) return value.map((v) => resolveDeep(v, pixelKey));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [resolveTemplate(k, pixelKey), resolveDeep(v, pixelKey)]));
+  }
+  return value;
+}
 
 // --- Matrix (OFL lib/model/Matrix.js) ------------------------------------------------------------
 
@@ -137,17 +147,15 @@ export function channelNames(fixture: OflFixture, matrix?: OflMatrix): Map<strin
   const add = (key: string, ch: OflChannel) => {
     const base = ch.name ?? key;
     names.set(key, base);
-    (ch.fineChannelAliases ?? []).forEach((alias, i) => {
-      names.set(alias, ch.name ? `${base} fine${i > 0 ? `^${i + 1}` : ''}` : alias);
-    });
+    // OFL FineChannel.name: "<coarse name> fine", "<coarse name> fine^2" … – independent of the alias key
+    (ch.fineChannelAliases ?? []).forEach((alias, i) => names.set(alias, `${base} fine${i > 0 ? `^${i + 1}` : ''}`));
     for (const alias of switchingAliases(ch)) if (!names.has(alias)) names.set(alias, alias);
   };
   if (fixture.templateChannels && matrix) {
     const pixelKeys = [...matrix.positions.keys(), ...matrix.groupKeys];
     for (const [tKey, tCh] of Object.entries(fixture.templateChannels)) {
       for (const p of pixelKeys) {
-        const resolved = JSON.parse(resolveTemplate(JSON.stringify(tCh), p)) as OflChannel;
-        add(resolveTemplate(tKey, p), resolved);
+        add(resolveTemplate(tKey, p), resolveDeep(tCh, p) as OflChannel);
       }
     }
   }
@@ -224,24 +232,17 @@ export function buildDatabase(input: OflInput): FixtureDatabase {
   const mIndex = new Map(manufacturerKeys.map((k, i) => [k, i]));
   entries.sort((a, b) => mIndex.get(a.manufacturer)! - mIndex.get(b.manufacturer)! || collator.compare(a.name, b.name));
 
-  // channel name table, most frequent first (smaller indices → smaller file)
-  const freq = new Map<string, number>();
-  for (const e of entries) for (const m of e.modes) for (const c of m.channels) freq.set(c, (freq.get(c) ?? 0) + 1);
-  const channels = [...freq.keys()].sort((a, b) => freq.get(b)! - freq.get(a)! || (a < b ? -1 : a > b ? 1 : 0));
-  const cIndex = new Map(channels.map((c, i) => [c, i]));
-
   const fixtures: DbFixture[] = entries.map((e) => [
     mIndex.get(e.manufacturer)!,
     e.key,
     e.name,
-    e.modes.map((m): DbMode => [m.name, m.channels.map((c) => cIndex.get(c)!)]),
+    e.modes.map((m): DbMode => [m.name, m.channels]),
   ]);
 
   return {
-    format: 1,
+    format: 2,
     source: input.source,
     manufacturers: manufacturerKeys.map((k) => [k, input.manufacturers[k]?.name ?? k] as const),
-    channels,
     fixtures,
   };
 }

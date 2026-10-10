@@ -1,9 +1,9 @@
-import { parseFixtureDatabase, searchIndex, type FixtureDatabase } from '../core/dmx/fixtureDb';
+import { parseFixtureDatabase, searchIndex, type FixtureDatabase, type SearchEntry } from '../core/dmx/fixtureDb';
 
 export interface LoadedDatabase {
   readonly db: FixtureDatabase;
   /** normalized search text per fixture */
-  readonly index: string[];
+  readonly index: SearchEntry[];
   /** fixture id → index in db.fixtures */
   readonly byId: Map<string, number>;
 }

@@ -4,6 +4,7 @@
   import { DEFAULT_DIP_PROFILE, dipOnSwitches } from '../../lib/core/dmx/dip';
   import { fixtureAt, searchFixtures, type Fixture } from '../../lib/core/dmx/fixtureDb';
   import {
+    alignUp,
     calculatePatch,
     type GroupIssue,
     type PatchConflict,
@@ -88,7 +89,10 @@
   // --- Picker ---------------------------------------------------------------------------------
   let pickerFor = $state<string>();
   let query = $state('');
-  const hits = $derived(loaded && query.trim() ? searchFixtures(loaded.index, query, 30) : []);
+  const MAX_HITS = 30;
+  // one more than shown, to know whether there are more
+  const found = $derived(loaded && query.trim() ? searchFixtures(loaded.index, query, MAX_HITS + 1) : []);
+  const hits = $derived(found.slice(0, MAX_HITS));
 
   function choose(g: GroupDraft, f: Fixture, modeName?: string) {
     const mode = f.modes.find((m) => m.name === modeName) ?? f.modes[0]!;
@@ -98,6 +102,12 @@
     pickerFor = undefined;
     query = '';
   }
+
+  /** Saved channel list differs from the database (mode renamed or changed by an OFL update). */
+  const isStale = (ref: FixtureRef, f: Fixture) => {
+    const mode = f.modes.find((m) => m.name === ref.mode);
+    return !mode || mode.channels.length !== ref.channelNames.length || mode.channels.some((c, i) => c !== ref.channelNames[i]);
+  };
 
   // --- Patch ----------------------------------------------------------------------------------
   const channelsOf = (g: GroupDraft) => (g.fixture ? g.fixture.channelNames.length : g.manualChannels);
@@ -135,7 +145,7 @@
   const conflictsOf = (id: string) => result?.conflicts.filter((c) => c.groupId === id || (c.with.kind === 'group' && c.with.groupId === id)) ?? [];
 
   const ISSUE_TEXT: Record<GroupIssue, string> = {
-    invalidInput: 'Eingaben prüfen: Kanäle 1–512, Anzahl 1–10 000, Startadresse 1–512, ganze Zahlen.',
+    invalidInput: 'Eingaben prüfen (ganze Zahlen): Kanäle 1–512, Anzahl 1–10 000, Universe ab 1, Startadresse 1–512, Lücke 0–511.',
     startTooHigh: 'Startadresse zu hoch: Das erste Gerät würde über Adresse 512 hinausgehen.',
     noUniverseLeft: 'Kein Universe mehr frei (Art-Net-Grenze erreicht).',
   };
@@ -151,13 +161,25 @@
     return `Überschneidung mit ${other} in Universe ${c.universe}, im Bereich ${c.from}–${c.to}.`;
   }
 
+  /** Number of contiguous runs (next fixture directly after previous + gap, grid-aligned, same universe). */
+  function blockCount(list: readonly { universe: number; start: number; end: number }[], gap: number): number {
+    const inner = s.alignScope === 'device' ? alignStep : 1;
+    let blocks = list.length ? 1 : 0;
+    for (let i = 1; i < list.length; i++) {
+      const prev = list[i - 1]!;
+      const cur = list[i]!;
+      if (cur.universe === prev.universe && cur.start !== alignUp(prev.end + 1 + gap, inner)) blocks++;
+    }
+    return blocks;
+  }
+
   const artNet = (u: number) => {
     const a = artNetAddress(u, s.artNetBase);
     return a.ok ? `${a.value.net}:${a.value.subnet}:${a.value.universe}` : '–';
   };
   const dip = (address: number) => {
     const r = dipOnSwitches(address, DEFAULT_DIP_PROFILE);
-    return r.ok ? (r.value.length ? r.value.join('·') : '–') : '–';
+    return r.ok ? r.value.join('·') : 'nicht einstellbar (> 511)';
   };
 
   const fixtures = $derived(
@@ -233,8 +255,18 @@
             </li>
           {/each}
         </ul>
+        {#if found.length > MAX_HITS}
+          <p class="small muted">Weitere Treffer – Suche genauer eingeben (z. B. Hersteller und Modell).</p>
+        {/if}
         <div class="picker-actions">
-          <button class="link-btn" onclick={() => { g.fixture = undefined; pickerFor = undefined; }}>Ohne Datenbank (Kanalzahl)</button>
+          <button
+            class="link-btn"
+            onclick={() => {
+              if (g.fixture) g.manualChannels = g.fixture.channelNames.length;
+              g.fixture = undefined;
+              pickerFor = undefined;
+            }}>Ohne Datenbank (Kanalzahl)</button
+          >
           <button class="link-btn" onclick={() => (pickerFor = undefined)}>Abbrechen</button>
         </div>
       </div>
@@ -252,7 +284,7 @@
         <div class="row stack">
           <label class="label" for="mode-{g.id}">Modus</label>
           <select id="mode-{g.id}" value={g.fixture.mode} onchange={(e) => choose(g, dbFixture, e.currentTarget.value)}>
-            {#each dbFixture.modes as m (m.name)}
+            {#each dbFixture.modes as m, mi (mi)}
               <option value={m.name}>{m.name} ({m.channels.length} Kanäle)</option>
             {/each}
           </select>
@@ -263,18 +295,23 @@
       <ResultRow label="Kanäle pro Gerät" value={String(g.fixture.channelNames.length)} />
       {#if loaded && !dbFixture}
         <p class="warning">Gerät nicht mehr in der Datenbank – gespeicherte Kanalliste wird verwendet.</p>
+      {:else if dbFixture && isStale(g.fixture, dbFixture)}
+        <div class="warning stale">
+          <span>Die Datenbank hat für diesen Modus eine andere Kanalliste als gespeichert (z. B. nach einem App-Update). Gerechnet wird mit der gespeicherten.</span>
+          <button class="btn" onclick={() => choose(g, dbFixture, g.fixture!.mode)}>Aus Datenbank übernehmen</button>
+        </div>
       {/if}
     {:else}
-      <NumberField label="Kanäle pro Gerät" bind:value={g.manualChannels} digits={0} min={1} max={512} />
+      <NumberField label="Kanäle pro Gerät" bind:value={g.manualChannels} digits={0} integer min={1} max={512} />
     {/if}
 
-    <NumberField label="Anzahl" bind:value={g.count} digits={0} min={1} />
-    <NumberField label="Universe" bind:value={g.universe} digits={0} min={1} />
+    <NumberField label="Anzahl" bind:value={g.count} digits={0} integer min={1} />
+    <NumberField label="Universe" bind:value={g.universe} digits={0} integer min={1} />
     <ToggleRow label="Feste Startadresse" bind:checked={g.fixedStart} />
     {#if g.fixedStart}
-      <NumberField label="Startadresse" bind:value={g.start} digits={0} min={1} max={512} />
+      <NumberField label="Startadresse" bind:value={g.start} digits={0} integer min={1} max={512} />
     {/if}
-    <NumberField label="Lücke zwischen Geräten" bind:value={g.gap} digits={0} min={0} max={511} unit="Kanäle" />
+    <NumberField label="Lücke zwischen Geräten" bind:value={g.gap} digits={0} integer min={0} max={511} unit="Kanäle" />
 
     {#if gr?.split && !g.fixedStart && g.keepTogether === undefined}
       <div class="question" role="group" aria-label="Gruppe verteilt">
@@ -293,7 +330,7 @@
     {#if gr?.split && g.fixedStart}
       <p class="warning">Ab der festen Startadresse passt die Gruppe nicht in ein Universe – der Rest liegt im nächsten.</p>
     {/if}
-    {#if gr?.split && g.keepTogether}
+    {#if gr?.split && g.keepTogether && !g.fixedStart}
       <p class="small muted">Größer als ein Universe – wird trotzdem aufgeteilt.</p>
     {/if}
 
@@ -307,6 +344,7 @@
     {#if gr && gr.fixtures.length}
       {@const first = gr.fixtures[0]!}
       {@const last = gr.fixtures.at(-1)!}
+      {@const blocks = blockCount(gr.fixtures, g.gap)}
       <ResultRow
         label="Adressen"
         value={first.universe === last.universe
@@ -314,6 +352,9 @@
           : `U${first.universe}.${first.start} – U${last.universe}.${last.end}`}
         emphasized
       />
+      {#if blocks > 1}
+        <p class="small muted">In {blocks} Blöcken – dazwischen liegen andere Geräte oder reservierte Bereiche. Einzelne Adressen in der Patch-Liste.</p>
+      {/if}
     {/if}
 
     {#if g.fixture}
@@ -346,7 +387,7 @@
   <p class="small muted">{placements.find((p) => p.value === s.placement)?.hint}</p>
   <Segmented label="Ausrichtung der Startadressen" options={aligns} bind:value={s.align} />
   {#if s.align === 'custom'}
-    <NumberField label="Raster N" hint="Startadressen 1, 1+N, 1+2N …" bind:value={s.alignCustom} digits={0} min={1} max={512} />
+    <NumberField label="Raster N" hint="Startadressen 1, 1+N, 1+2N …" bind:value={s.alignCustom} digits={0} integer min={1} max={512} />
   {/if}
   {#if s.align !== 'none'}
     <Segmented label="Ausrichtung gilt für" options={scopes} bind:value={s.alignScope} />
@@ -356,9 +397,9 @@
   <h3 class="sub">Reservierte Bereiche</h3>
   {#each s.reserved as r, ri (r.id)}
     <div class="reserved">
-      <NumberField label="Universe" bind:value={r.universe} digits={0} min={1} />
-      <NumberField label="Von" bind:value={r.from} digits={0} min={1} max={512} />
-      <NumberField label="Bis" bind:value={r.to} digits={0} min={1} max={512} />
+      <NumberField label="Universe" bind:value={r.universe} digits={0} integer min={1} />
+      <NumberField label="Von" bind:value={r.from} digits={0} integer min={1} max={512} />
+      <NumberField label="Bis" bind:value={r.to} digits={0} integer min={1} max={512} />
       <button class="link-btn danger" onclick={() => s.reserved.splice(ri, 1)}>Bereich entfernen</button>
     </div>
   {/each}
@@ -497,6 +538,10 @@
     display: flex;
     justify-content: space-between;
     gap: 12px;
+  }
+  .stale {
+    flex-direction: column;
+    align-items: stretch;
   }
   .question {
     background: var(--warn-bg);

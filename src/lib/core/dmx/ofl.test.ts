@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixtureAt, normalizeSearch, parseFixtureDatabase, searchFixtures, searchIndex } from './fixtureDb';
+import { fixtureAt, normalizeSearch, parseFixtureDatabase, searchEntry, searchFixtures, searchIndex } from './fixtureDb';
 import { OflMatrix, buildDatabase, resolveFixture, type OflFixture } from './ofl';
 import bundledJson from '../../../../public/fixtures.json?raw';
 
@@ -16,6 +16,14 @@ describe('OFL channel names', () => {
       modes: [{ name: '24 bit', channels: ['Intensity', 'Intensity fine', 'Intensity fine^2'] }],
     });
     expect(channels(f)).toEqual(['Intensity', 'Intensity fine', 'Intensity fine^2']);
+  });
+
+  it('fine channel of an unnamed channel is "<key> fine", not the alias (martin/mac-700-wash "Cyan fine")', () => {
+    const f = fixture({
+      availableChannels: { 'Cyan Intensity': { fineChannelAliases: ['Cyan fine'] }, Pan: { fineChannelAliases: ['Pan Fine'] } },
+      modes: [{ name: 'm', channels: ['Cyan Intensity', 'Cyan fine', 'Pan', 'Pan Fine'] }],
+    });
+    expect(channels(f)).toEqual(['Cyan Intensity', 'Cyan Intensity fine', 'Pan', 'Pan fine']);
   });
 
   it('channel "name" overrides the key, fine channels follow the name', () => {
@@ -140,10 +148,6 @@ describe('fixture database', () => {
     expect(fixtureAt(db, 2)!.id).toBe('zeta/par');
   });
 
-  it('channel table: each name once, most frequent first', () => {
-    expect(db.channels).toEqual(['Dimmer', 'Red']);
-  });
-
   it('round trip through JSON and parseFixtureDatabase', () => {
     expect(parseFixtureDatabase(JSON.parse(JSON.stringify(db)))).toEqual(db);
   });
@@ -152,19 +156,19 @@ describe('fixture database', () => {
     const ok = JSON.parse(JSON.stringify(db));
     const broken = [
       null,
-      { ...ok, format: 2 },
-      { ...ok, channels: [1] },
-      { ...ok, fixtures: [[5, 'k', 'n', [['m', [0]]]]] }, // manufacturer index out of range
-      { ...ok, fixtures: [[0, 'k', 'n', [['m', [9]]]]] }, // channel index out of range
+      { ...ok, format: 1 }, // old format with channel name table
+      { ...ok, fixtures: [[5, 'k', 'n', [['m', ['Dimmer']]]]] }, // manufacturer index out of range
+      { ...ok, fixtures: [[0, 'k', 'n', [['m', [1]]]]] }, // channel name not a string
       { ...ok, fixtures: [[0, 'k', 'n', []]] }, // no modes
       { ...ok, fixtures: [[0, 'k', 'n', [['m', []]]]] }, // empty mode
+      { ...ok, fixtures: [[0, 'k', 'n', [['m', ['A']], ['m', ['B']]]]] }, // duplicate mode name
     ];
     for (const b of broken) expect(parseFixtureDatabase(b)).toBeUndefined();
   });
 });
 
 describe('fixture search', () => {
-  const index = [' cameo hydrabeam 300 rgbw ', ' minuit une ivl carre ', ' stairville mh x30 led spot ', ' cameo zenit w600 '];
+  const index = ['Cameo Hydrabeam 300 RGBW', 'Minuit Une IVL Carré', 'Stairville MH-X30 LED Spot', 'Cameo Zenit W600'].map(searchEntry);
 
   it('normalizes case, accents and punctuation', () => {
     expect(normalizeSearch('  Minuit Une – IVL Carré ')).toBe('minuit une ivl carre');
@@ -184,6 +188,11 @@ describe('fixture search', () => {
     // "30": word start of "300" in 0 (score 1), inside "x30" in 2 (score 3)
     expect(searchFixtures(index, '30')).toEqual([0, 2]);
     expect(searchFixtures(index, 'spot')).toEqual([2]);
+  });
+
+  it('without separators: "mhx30" finds "MH-X30", ranked after real word matches', () => {
+    expect(searchFixtures(index, 'mhx30')).toEqual([2]);
+    expect(searchFixtures(index, 'zenitw600')).toEqual([3]);
   });
 
   it('limit', () => {

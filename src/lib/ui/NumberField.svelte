@@ -12,9 +12,11 @@
     min?: number;
     max?: number;
     hint?: string;
+    /** only whole numbers are accepted (e.g. addresses, counts) */
+    integer?: boolean;
   }
 
-  let { label, value = $bindable(), unit = '', digits = 3, allowNegative = false, min, max, hint }: Props = $props();
+  let { label, value = $bindable(), unit = '', digits = 3, allowNegative = false, min, max, hint, integer = false }: Props = $props();
 
   const id = uid();
   let focused = $state(false);
@@ -32,6 +34,7 @@
     if (n !== undefined && !allowNegative && n < 0) n = undefined;
     if (n !== undefined && min !== undefined && n < min) n = undefined;
     if (n !== undefined && max !== undefined && n > max) n = undefined;
+    if (n !== undefined && integer && !Number.isInteger(n)) n = undefined;
     invalid = n === undefined && text.trim() !== '';
     if (n !== undefined) value = n;
   }
