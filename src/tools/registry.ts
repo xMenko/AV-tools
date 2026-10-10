@@ -74,9 +74,18 @@ export const TOOLS: readonly ToolDef[] = [
     icon: 'polarity',
     load: () => import('./polarity/PolarityTool.svelte'),
   },
+  {
+    id: 'dip',
+    title: 'DIP-Schalter-Rechner',
+    subtitle: 'DMX-Adresse ↔ Schalterstellung',
+    keywords: 'dip schalter dmx adresse switch adressierung',
+    category: 'lighting',
+    icon: 'dip',
+    load: () => import('./dip/DipTool.svelte'),
+  },
 ];
 
 /** Shown as "demnächst" on the home screen. */
-export const PLANNED: readonly string[] = ['DMX-Adressrechner', 'DIP-Schalter-Rechner'];
+export const PLANNED: readonly string[] = ['DMX-Adressrechner'];
 
 export const toolById = (id: string) => TOOLS.find((t) => t.id === id);

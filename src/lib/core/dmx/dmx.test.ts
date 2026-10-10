@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { artNetAddress, maxUniverse } from './artnet';
-import { DEFAULT_DIP_PROFILE, addressToDip, dipOnSwitches, dipToAddress, type DipProfile } from './dip';
+import { DEFAULT_DIP_PROFILE, addressToDip, dipOnSwitches, dipPositions, dipRange, dipToAddress, type DipProfile } from './dip';
 import { alignUp, calculatePatch, type PatchGroup, type PatchOptions, type PatchResult } from './patch';
 
 // All expectations below are hand calculations; the arithmetic is written out in the comments.
@@ -374,6 +374,19 @@ describe('DIP switches', () => {
     expect(on(1, o1)).toEqual([]);
     expect(on(512, o1)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(on(38, o1)).toEqual([1, 3, 6]);
+  });
+
+  it('positions for address 0 (no valid DMX address): all OFF, inverted all ON; 512 not representable with offset 0', () => {
+    expect(dipPositions(0, DEFAULT_DIP_PROFILE)).toEqual(new Array(10).fill(false));
+    expect(dipPositions(0, p({ inverted: true, switches: 9 }))).toEqual(new Array(9).fill(true));
+    expect(dipPositions(512, DEFAULT_DIP_PROFILE)).toBeUndefined();
+    expect(dipPositions(0, p({ offset: 1 }))).toBeUndefined();
+    expect(dipPositions(1.5, DEFAULT_DIP_PROFILE)).toBeUndefined();
+  });
+
+  it('range: offset 0 → 1–511, offset 1 → 1–512', () => {
+    expect(dipRange(DEFAULT_DIP_PROFILE)).toEqual({ min: 1, max: 511 });
+    expect(dipRange(p({ offset: 1 }))).toEqual({ min: 1, max: 512 });
   });
 
   it('switches → address: all OFF = 0 (invalid, UI warns), round trip for 1–511 in every profile', () => {

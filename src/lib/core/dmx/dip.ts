@@ -35,7 +35,16 @@ export function switchValue(switchNumber: number, profile: DipProfile): number {
 export function addressToDip(address: number, profile: DipProfile): Result<boolean[], DipError> {
   const { min, max } = dipRange(profile);
   if (!Number.isInteger(address) || address < min || address > max) return err('outOfRange');
+  return ok(dipPositions(address, profile)!);
+}
+
+/**
+ * Like addressToDip, but also for addresses the switches can show although they are no valid DMX
+ * address (0 with offset 0 = all bits off). Undefined if the switches cannot represent the address.
+ */
+export function dipPositions(address: number, profile: DipProfile): boolean[] | undefined {
   const sum = address - profile.offset;
+  if (!Number.isInteger(sum) || sum < 0 || sum > MAX_SUM) return undefined;
   const positions: boolean[] = [];
   for (let n = 1; n <= profile.switches; n++) {
     if (n > ADDRESS_SWITCHES) {
@@ -45,7 +54,7 @@ export function addressToDip(address: number, profile: DipProfile): Result<boole
     const bit = (sum & switchValue(n, profile)) !== 0;
     positions.push(profile.inverted ? !bit : bit);
   }
-  return ok(positions);
+  return positions;
 }
 
 /** Physical switch positions → address. May return 0 (not a valid DMX address – the UI warns). */

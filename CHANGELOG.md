@@ -13,3 +13,7 @@ Alle relevanten Änderungen, insbesondere Korrekturen an Berechnungen, werden hi
 - RTA: 1/1-, 1/3-, 1/6-Oktavbänder, Spitzenwert halten, dBFS-Skala
 - Polaritätscheck: Kreuzkorrelation mit Sweep, zwei Modi, Mikrofon-Referenz, Dauermessung
 - Roter Nachtmodus, Offline-Betrieb, Datenschutzerklärung
+- DIP-Schalter-Rechner: Adresse ↔ Schalterstellung, Schalter antippen, Geräteprofile (Schalter 1 = 1 oder 256, invertiert, Summe oder Summe + 1, 9/10 Schalter)
+
+### Korrigiert
+- RTA: Umschalten von Bandbreite und Mittelung wirkt jetzt auch während einer laufenden Messung; Raster und Bänder auch ohne Messung sichtbar; 1/6-Oktave beschriftet mit 20, 40, 80 … (Bandkanten)

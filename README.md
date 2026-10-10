@@ -20,7 +20,7 @@ Rechner und Messwerkzeuge für die Veranstaltungstechnik als Web-App. Sie läuft
 | RTA (1/1, 1/3, 1/6 Oktave) | ✅ |
 | Polaritätscheck (Sweep + Kreuzkorrelation, Mikrofon-Referenz) | ✅ |
 | DMX-Adressrechner mit Lampendatenbank | geplant |
-| DIP-Schalter-Rechner | geplant |
+| DIP-Schalter-Rechner (Profile: Reihenfolge, invertiert, Offset, 9/10 Schalter) | ✅ |
 
 Die vollständige Roadmap steht in [`spec/SPEC.md`](spec/SPEC.md).
 
