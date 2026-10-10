@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import { MICROPHONE_ERROR_TEXT, openMicrophone, type Microphone } from '../../lib/audio/microphone';
   import { Rta } from '../../lib/audio/rta';
+  import { powerToDb } from '../../lib/core/dsp/levels';
   import { makeBands, octaveAxisTicks, type AxisTick, type BandFraction, type BandLevel } from '../../lib/core/dsp/octaveBands';
   import FormulaBox from '../../lib/ui/FormulaBox.svelte';
   import Segmented from '../../lib/ui/Segmented.svelte';
@@ -57,7 +58,8 @@
     void s.peakHold;
     if (running || !canvas) return;
     const bands = makeBands(fraction);
-    const shown = lastLevels?.length === bands.length ? lastLevels : undefined;
+    const same = lastLevels?.length === bands.length && lastLevels[0]?.band.center === bands[0]?.center;
+    const shown = same ? lastLevels : undefined;
     render(shown ?? bands.map((band) => ({ band, power: 0, binsCovered: 1 })));
   });
 
@@ -143,7 +145,7 @@
     if (peaks.length !== n) peaks = new Array(n).fill(-Infinity);
 
     levels.forEach((l, i) => {
-      const db = l.power > 0 ? 10 * Math.log10(l.power) : -Infinity;
+      const db = powerToDb(l.power); // −∞ for 0
       const x = left + i * slot + (slot - barW) / 2;
       const yy = y(db);
       g.fillStyle = colBar;
@@ -168,17 +170,12 @@
     }
   }
 
-  // 1/3 and 1/6: octave series 20, 40, 80 … (centres resp. edges); octave bands: every centre.
+  // Recomputed only when the band set changes (new Band objects on every fraction change).
   let tickCache: { first: BandLevel['band']; ticks: AxisTick[] } | undefined;
   function axisTicks(levels: BandLevel[]): AxisTick[] {
     const first = levels[0]?.band;
     if (!first) return [];
-    if (tickCache?.first !== first) {
-      const bands = levels.map((l) => l.band);
-      const octaveTicks = octaveAxisTicks(bands);
-      const ticks = octaveTicks.length > 0 ? octaveTicks : bands.map((b, i) => ({ position: i + 0.5, label: b.label }));
-      tickCache = { first, ticks };
-    }
+    if (tickCache?.first !== first) tickCache = { first, ticks: octaveAxisTicks(levels.map((l) => l.band)) };
     return tickCache.ticks;
   }
 

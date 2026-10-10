@@ -18,10 +18,8 @@ export interface Band {
 
 const G = 10 ** (3 / 10);
 
-const NOMINAL_THIRD = [
-  20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000,
-  2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000,
-];
+/** Nominal third-octave mantissas (IEC 61260-1 Annex E / ISO 266), repeated every decade. */
+const NOMINAL_THIRD_MANTISSA = [10, 12.5, 16, 20, 25, 31.5, 40, 50, 63, 80];
 
 function formatHz(f: number): string {
   if (f >= 1000) {
@@ -38,8 +36,14 @@ function nominal(center: number, fraction: BandFraction): number {
     const p = 10 ** (Math.floor(Math.log10(center)) - digits);
     return Math.round(center / p) * p;
   }
-  let best = NOMINAL_THIRD[0]!;
-  for (const n of NOMINAL_THIRD) if (Math.abs(Math.log(n / center)) < Math.abs(Math.log(best / center))) best = n;
+  const decade = Math.floor(Math.log10(center)) - 1;
+  let best = NaN;
+  for (let d = decade - 1; d <= decade + 1; d++) {
+    for (const m of NOMINAL_THIRD_MANTISSA) {
+      const n = Number((m * 10 ** d).toPrecision(3)); // avoid 31.5 · 10 = 315.00000000000006
+      if (!(Math.abs(Math.log(n / center)) >= Math.abs(Math.log(best / center)))) best = n;
+    }
+  }
   return best;
 }
 
@@ -50,9 +54,10 @@ export interface AxisTick {
 }
 
 /**
- * Axis ticks every octave on the third-octave series 20, 40, 80 … 10k, 20k (exact: 1000 · G^(k/3), k ≡ 1 mod 3).
- * For b = 3 these are band centres, for b = 6 band edges (IEC 61260-1: even-b edges = third-octave centres).
- * Octave bands (b = 1) have no tick on this series – label their centres instead.
+ * Axis ticks every octave on the third-octave series … 10, 20, 40, 80 … 10k, 20k, 40k …
+ * (exact: 1000 · G^(k/3), k ≡ 1 mod 3). For b = 3 these are band centres, for b = 6 band edges
+ * (IEC 61260-1: even-b edges = third-octave centres). Octave bands (b = 1) have no tick on this
+ * series – then every band centre is labelled instead.
  */
 export function octaveAxisTicks(bands: readonly Band[]): AxisTick[] {
   const ticks: AxisTick[] = [];
@@ -77,6 +82,7 @@ export function octaveAxisTicks(bands: readonly Band[]): AxisTick[] {
       }
     }
   }
+  if (ticks.length === 0) return bands.map((band, i) => ({ position: i + 0.5, label: band.label }));
   return ticks;
 }
 

@@ -117,8 +117,27 @@ describe('octave bands', () => {
     expect(t.map((x) => x.position)).toEqual([0.5, 3.5, 6.5, 9.5, 12.5, 15.5, 18.5, 21.5, 24.5, 27.5, 30.5]);
   });
 
-  it('octave bands have no ticks on the 20 Hz series', () => {
-    expect(octaveAxisTicks(makeBands(1))).toEqual([]);
+  it('octave bands have no tick on the 20 Hz series – every centre is labelled', () => {
+    const t = octaveAxisTicks(makeBands(1));
+    expect(t.map((x) => x.label)).toEqual(['31.5', '63', '125', '250', '500', '1k', '2k', '4k', '8k', '16k']);
+    expect(t.map((x) => x.position)).toEqual([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5]);
+  });
+
+  it('axis ticks have no labels for an empty band list', () => {
+    expect(octaveAxisTicks([])).toEqual([]);
+  });
+
+  // Reference: ISO 266 / IEC 61260-1 Annex E – nominal series continues per decade:
+  // 1000 · G^(-20/3) ≈ 9.98 Hz → "10", 1000 · G^(16/3) ≈ 39.8 kHz → "40k".
+  it('nominal labels continue beyond 20 Hz – 20 kHz', () => {
+    const b = makeBands(3, 5, 50000);
+    expect(b[0]!.label).toBe('5');
+    expect(b.at(-1)!.label).toBe('50k');
+    expect(b.map((x) => x.label)).toContain('12.5');
+    expect(b.map((x) => x.label)).toContain('31.5k');
+    const labels = octaveAxisTicks(b).map((x) => x.label);
+    expect(labels).toEqual(['5', '10', ...OCTAVE_SERIES, '40k']);
+    expect(new Set(labels).size).toBe(labels.length);
   });
 
   it('a bin-centred 1 kHz sine lands in the 1 kHz band', () => {
