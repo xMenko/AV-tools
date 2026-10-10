@@ -102,6 +102,9 @@ Damit ist „Arc-Delay“ aus Phase 2 hierher gewandert. Cardioid und End-Fire b
 - **Eigene Geräte** (Name, Modi, Kanalzahl) werden lokal im Browser gespeichert, also getrennt von der gebündelten DB. Export/Import als Datei.
 - Suche über Hersteller und Modell mit Favoriten.
 - Lizenzhinweis für OFL in „Über → Lizenzen“.
+- Hinweise in der App (im DMX-Rechner und unter „Über“):
+  - Eigene Geräte und Favoriten liegen nur lokal im Browser dieses Geräts. Sie werden nicht übertragen und gehen beim Löschen der Browserdaten oder über „Gespeicherte Eingaben löschen“ verloren. Deshalb gibt es Export/Import als Sicherung.
+  - Die Datenbank ist Teil der App und wird nur mit einer neuen App-Version aktualisiert. Updates werden geladen, wenn die App mit Internetverbindung geöffnet wird („Neue Version verfügbar → Neu laden“). Angezeigt wird der Stand der Datenbank (OFL-Version/Datum).
 
 **Patch-Eingabe:** Liste von **Gruppen**. Jede Gruppe hat:
 - Gerät und Modus, aus DB oder eigenen Geräten. Die Kanalzahl ergibt sich daraus.
@@ -220,7 +223,7 @@ Gestrichen: MAC-Herstellerlookup, Akkulaufzeit Funkstrecken.
 - Keine Datenerhebung, keine Cookies, keine Drittanbieter, keine externen Ressourcen.
 - Content Security Policy im Build: `connect-src 'self'` u. a., d. h. technisch keine Verbindungen zu fremden Servern.
 - Hosting GitHub Pages: GitHub protokolliert IP-Adressen beim Laden und bei Update-Prüfungen. Das steht in der Datenschutzerklärung.
-- `localStorage` nur für die letzten Eingaben, als technisch erforderlich nach § 25 Abs. 2 Nr. 2 TDDDG; jederzeit löschbar.
+- `localStorage` nur für die letzten Eingaben, eigene Geräte und Favoriten, als technisch erforderlich nach § 25 Abs. 2 Nr. 2 TDDDG; jederzeit löschbar.
 - Mikrofon nur nach Freigabe und während der Messung, Auswertung nur im Arbeitsspeicher.
 - Datenschutzerklärung: `public/datenschutz.html`, offline verfügbar und in „Über“ verlinkt. Verantwortlicher mit Name und E-Mail (av_tools@icloud.com), ohne Postanschrift.
 - Lizenzen: MIT für den eigenen Code; Open Fixture Library (MIT) mit Hinweis in „Über“, sobald enthalten.
@@ -254,3 +257,4 @@ Gestrichen: MAC-Herstellerlookup, Akkulaufzeit Funkstrecken.
 | 2026-10-10 | Zahnlücken-Rechner = Sub-Abstand aus Gehäusemaß und Übergangsfrequenz, Arc-Delay integriert |
 | 2026-10-10 | Sub-Abstand immer Mitte–Mitte; λ/2 fest, λ/4 anpassbar; Arc-Delay: Mitte T0, nach außen steigend |
 | 2026-10-10 | Datenschutzerklärung ohne Postanschrift, nur Name und E-Mail (kein kostenpflichtiger Anschriftenservice); bei kommerzieller Nutzung oder Impressumspflicht neu bewerten |
+| 2026-10-10 | DMX: eigene Geräte und Favoriten lokal im Browser (localStorage); Hinweis darauf und auf die Aktualisierung der Datenbank nur mit App-Updates in der App; Kanalnamen pro Modus in der Datenbank |
