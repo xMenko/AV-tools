@@ -110,18 +110,23 @@ Damit ist „Arc-Delay“ aus Phase 2 hierher gewandert. Cardioid und End-Fire b
 - Gerät und Modus, aus DB oder eigenen Geräten. Die Kanalzahl ergibt sich daraus.
 - Anzahl
 - Ziel-Universe (1-basiert) und optional eine Startadresse; ohne Startadresse wird die nächste freie Adresse genommen.
-- Optional eine Lücke zwischen Geräten (Kanäle).
+- Optional eine Lücke zwischen Geräten (Kanäle). Lücken bleiben auch für andere Gruppen frei.
+- Optional „Gruppe zusammenhalten“ (siehe Überlauf).
 
 Derselbe Gerätetyp in mehreren Universen bedeutet einfach mehrere Gruppen.
 
 **Globale Optionen**
-- Ausrichtung der Startadressen: keine / auf glatte Adressen (x01, x11, x21 … bzw. Raster N).
-- Überlauf: Passt eine Gruppe nicht mehr ins Ziel-Universe, gilt entweder (a) **automatisch ins nächste Universe** (Standard) oder (b) Fehler anzeigen.
+- Ausrichtung der Startadressen: keine / auf glatte Adressen (x01, x11, x21 … bzw. Raster N), wahlweise für jedes Gerät oder nur für das erste Gerät einer Gruppe (pro Universe).
+- Platzierung von Gruppen ohne Startadresse (Auswahl):
+  - **Erste Lücke für die ganze Gruppe** (Standard): niedrigste Adresse, an der die ganze Gruppe zusammenhängend passt; gibt es keine, hinter dem letzten Gerät.
+  - **Hinter dem Letzten:** hinter der höchsten von einem Gerät belegten Adresse; Lücken davor bleiben frei.
+  - **Jedes Gerät einzeln:** jedes Gerät nimmt die niedrigste freie Adresse (am dichtesten, kann eine Gruppe in Blöcke teilen).
 - Reservierte Bereiche pro Universe, z. B. 1–20 für Nebel und Hazer.
 
 **Regeln**
 - Ein Gerät überschreitet **nie** die Universe-Grenze. Startadresse + Kanalzahl − 1 ≤ 512.
 - Überlappungen zwischen Gruppen mit fester Startadresse werden als Konflikt angezeigt, nicht still verschoben.
+- **Überlauf:** Passt eine Gruppe nicht mehr ins Ziel-Universe, gehen die übrigen Geräte ins nächste Universe. Wird eine Gruppe dadurch auf mehrere Universes verteilt, fragt die App bei dieser Gruppe nach: „aufteilen“ oder „zusammenhalten“ (die ganze Gruppe beginnt im nächsten Universe). Gruppen, die größer als ein Universe sind, werden immer geteilt. Bei fester Startadresse wird nur auf die Verteilung hingewiesen.
 
 **Ausgabe:** Tabelle mit Gerät #, Name, Universe, Startadresse, Endadresse, DIP-Stellung (Kurzform), Art-Net-Adresse (Net/Subnet/Universe). Dazu Belegung pro Universe (frei/belegt).
 Export als CSV und Druckansicht (als PDF speicherbar) (V1.1).
@@ -258,3 +263,4 @@ Gestrichen: MAC-Herstellerlookup, Akkulaufzeit Funkstrecken.
 | 2026-10-10 | Sub-Abstand immer Mitte–Mitte; λ/2 fest, λ/4 anpassbar; Arc-Delay: Mitte T0, nach außen steigend |
 | 2026-10-10 | Datenschutzerklärung ohne Postanschrift, nur Name und E-Mail (kein kostenpflichtiger Anschriftenservice); bei kommerzieller Nutzung oder Impressumspflicht neu bewerten |
 | 2026-10-10 | DMX: eigene Geräte und Favoriten lokal im Browser (localStorage); Hinweis darauf und auf die Aktualisierung der Datenbank nur mit App-Updates in der App; Kanalnamen pro Modus in der Datenbank |
+| 2026-10-10 | DMX-Patch: Platzierung als Auswahl (erste Lücke für ganze Gruppe / hinter dem Letzten / jedes Gerät einzeln); Überlauf immer ins nächste Universe, bei Aufteilung Rückfrage pro Gruppe („zusammenhalten“); globale Option „Fehler anzeigen“ entfällt; Lücken bleiben für andere Gruppen frei |
