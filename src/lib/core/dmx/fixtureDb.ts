@@ -80,3 +80,41 @@ export function fixtureAt(db: FixtureDatabase, index: number): Fixture | undefin
     modes: modes.map(([modeName, chs]) => ({ name: modeName, channels: chs.map((c) => db.channels[c]!) })),
   };
 }
+
+/** Lower case, without diacritics ("Carré" → "carre"), punctuation as spaces. */
+export function normalizeSearch(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+/** Precomputed search text per fixture ("manufacturer name"), normalized. */
+export function searchIndex(db: FixtureDatabase): string[] {
+  return db.fixtures.map(([m, , name]) => ` ${normalizeSearch(`${db.manufacturers[m]![1]} ${name}`)} `);
+}
+
+/**
+ * Indices of fixtures that contain every word of the query (in manufacturer or name), best first:
+ * words at the start of a word rank before matches inside a word; ties keep database order
+ * (manufacturer, then name).
+ */
+export function searchFixtures(index: readonly string[], query: string, limit = 50): number[] {
+  const words = normalizeSearch(query).split(' ').filter(Boolean);
+  if (words.length === 0) return [];
+  const hits: { i: number; score: number }[] = [];
+  index.forEach((text, i) => {
+    let score = 0;
+    for (const w of words) {
+      if (text.includes(` ${w} `)) score += 0;
+      else if (text.includes(` ${w}`)) score += 1;
+      else if (text.includes(w)) score += 3;
+      else return;
+    }
+    hits.push({ i, score });
+  });
+  hits.sort((a, b) => a.score - b.score || a.i - b.i);
+  return hits.slice(0, limit).map((h) => h.i);
+}

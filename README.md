@@ -19,7 +19,7 @@ Rechner und Messwerkzeuge für die Veranstaltungstechnik als Web-App. Sie läuft
 | Signalgenerator (Sinus, rosa/weißes Rauschen, Sweep, Polaritätssignal) | ✅ |
 | RTA (1/1, 1/3, 1/6 Oktave) | ✅ |
 | Polaritätscheck (Sweep + Kreuzkorrelation, Mikrofon-Referenz) | ✅ |
-| DMX-Adressrechner mit Lampendatenbank | geplant |
+| DMX-Adressrechner (Gerätedatenbank OFL, Gruppen, Universes, Art-Net, DIP, Konflikte) | ✅ |
 | DIP-Schalter-Rechner (Profile: Reihenfolge, invertiert, Offset, 9/10 Schalter) | ✅ |
 
 Die vollständige Roadmap steht in [`spec/SPEC.md`](spec/SPEC.md).

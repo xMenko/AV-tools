@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixtureAt, parseFixtureDatabase } from './fixtureDb';
+import { fixtureAt, normalizeSearch, parseFixtureDatabase, searchFixtures, searchIndex } from './fixtureDb';
 import { OflMatrix, buildDatabase, resolveFixture, type OflFixture } from './ofl';
 import bundledJson from '../../../../public/fixtures.json?raw';
 
@@ -163,6 +163,34 @@ describe('fixture database', () => {
   });
 });
 
+describe('fixture search', () => {
+  const index = [' cameo hydrabeam 300 rgbw ', ' minuit une ivl carre ', ' stairville mh x30 led spot ', ' cameo zenit w600 '];
+
+  it('normalizes case, accents and punctuation', () => {
+    expect(normalizeSearch('  Minuit Une – IVL Carré ')).toBe('minuit une ivl carre');
+    expect(normalizeSearch('MH-x30')).toBe('mh x30');
+  });
+
+  it('every word must match, in manufacturer or name', () => {
+    expect(searchFixtures(index, 'cameo')).toEqual([0, 3]);
+    expect(searchFixtures(index, 'cameo zenit')).toEqual([3]);
+    expect(searchFixtures(index, 'Carré')).toEqual([1]);
+    expect(searchFixtures(index, 'mh-x30')).toEqual([2]);
+    expect(searchFixtures(index, 'cameo xyz')).toEqual([]);
+    expect(searchFixtures(index, '  ')).toEqual([]);
+  });
+
+  it('whole word before word start before inside a word', () => {
+    // "30": word start of "300" in 0 (score 1), inside "x30" in 2 (score 3)
+    expect(searchFixtures(index, '30')).toEqual([0, 2]);
+    expect(searchFixtures(index, 'spot')).toEqual([2]);
+  });
+
+  it('limit', () => {
+    expect(searchFixtures(index, 'e', 2)).toHaveLength(2);
+  });
+});
+
 describe('bundled public/fixtures.json', () => {
   const db = parseFixtureDatabase(JSON.parse(bundledJson));
 
@@ -176,6 +204,12 @@ describe('bundled public/fixtures.json', () => {
     const i = db!.fixtures.findIndex((f) => db!.manufacturers[f[0]]![0] === 'generic' && f[1] === 'desk-channel');
     const modes = fixtureAt(db!, i)!.modes;
     expect(modes.find((m) => m.name === '24 bit')!.channels).toEqual(['Intensity', 'Intensity fine', 'Intensity fine^2']);
+  });
+
+  it('search finds a real fixture: "stairville mh x30"', () => {
+    const hits = searchFixtures(searchIndex(db!), 'stairville mh x30');
+    expect(hits.length).toBeGreaterThan(0);
+    expect(fixtureAt(db!, hits[0]!)!.id).toBe('stairville/mh-x30-led-spot');
   });
 
   it('ids are unique', () => {

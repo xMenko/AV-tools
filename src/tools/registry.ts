@@ -83,9 +83,18 @@ export const TOOLS: readonly ToolDef[] = [
     icon: 'dip',
     load: () => import('./dip/DipTool.svelte'),
   },
+  {
+    id: 'dmx',
+    title: 'DMX-Adressrechner',
+    subtitle: 'Patch über Universes mit Gerätedatenbank',
+    keywords: 'dmx patch adresse universe art-net artnet lampe scheinwerfer moving head kanal ofl',
+    category: 'lighting',
+    icon: 'dmx',
+    load: () => import('./dmx/DmxTool.svelte'),
+  },
 ];
 
 /** Shown as "demnächst" on the home screen. */
-export const PLANNED: readonly string[] = ['DMX-Adressrechner'];
+export const PLANNED: readonly string[] = [];
 
 export const toolById = (id: string) => TOOLS.find((t) => t.id === id);
